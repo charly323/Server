@@ -5,40 +5,15 @@ const fs = require('fs').promises;
 const path = require('path');
 
 const app = express();
-const PORT = process.env.PORT || 3000; // ✅ CAMBIO: Puerto dinámico para Render
+// 1. Usar el puerto que Render nos da a través de una variable de entorno.
+const PORT = process.env.PORT || 3000; 
 const EVENTOS_FILE = path.join(__dirname, 'eventos.json');
 
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public')); // Para servir archivos estáticos
 
-// ✅ NUEVO: Ruta principal que sirve index.html
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-// Función para leer eventos del archivo
-async function leerEventos() {
-  try {
-    const data = await fs.readFile(EVENTOS_FILE, 'utf8');
-    return JSON.parse(data);
-  } catch (error) {
-    // Si el archivo no existe, devolver array vacío
-    return [];
-  }
-}
-
-// Función para guardar eventos al archivo
-async function guardarEventos(eventos) {
-  try {
-    await fs.writeFile(EVENTOS_FILE, JSON.stringify(eventos, null, 2));
-    return true;
-  } catch (error) {
-    console.error('Error guardando eventos:', error);
-    return false;
-  }
-}
+// --- Rutas de la API (Estas ya estaban bien) ---
 
 // GET - Obtener todos los eventos
 app.get('/api/eventos', async (req, res) => {
@@ -64,7 +39,7 @@ app.post('/api/eventos', async (req, res) => {
 
     const eventos = await leerEventos();
     const nuevoEvento = {
-      id: Date.now(), // ID simple basado en timestamp
+      id: Date.now(),
       nombre,
       fecha,
       creado: new Date().toISOString()
@@ -147,19 +122,32 @@ app.put('/api/eventos/:id', async (req, res) => {
   }
 });
 
+// --- Ruta para servir la página principal (ESTO ES LO NUEVO) ---
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// --- Funciones para leer/guardar (Estas ya estaban bien) ---
+async function leerEventos() {
+  try {
+    const data = await fs.readFile(EVENTOS_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    return [];
+  }
+}
+
+async function guardarEventos(eventos) {
+  try {
+    await fs.writeFile(EVENTOS_FILE, JSON.stringify(eventos, null, 2));
+    return true;
+  } catch (error) {
+    console.error('Error guardando eventos:', error);
+    return false;
+  }
+}
+
 // Iniciar servidor
-app.listen(PORT, () => {
-  console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
-  console.log(`📁 Los eventos se guardan en: ${EVENTOS_FILE}`);
-});
-
-// Manejo graceful de cierre
-process.on('SIGTERM', () => {
-  console.log('👋 Cerrando servidor...');
-  process.exit(0);
-});
-
-process.on('SIGINT', () => {
-  console.log('👋 Cerrando servidor...');
-  process.exit(0);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Servidor corriendo en el puerto ${PORT}`);
 });
