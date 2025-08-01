@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Eventos Importantes</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display&family=Roboto+Slab&display=swap" rel="stylesheet">
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      min-height: 100vh;
+      margin: 0;
+      font-family: 'Playfair Display', serif;
+      color: #e6e6e6;
+      background-color: #101010;
+      background-image:
+        repeating-linear-gradient(135deg, rgba(255,255,255,0.02) 0 2px, transparent 2px 40px),
+        repeating-linear-gradient(225deg, rgba(255,255,255,0.015) 0 1px, transparent 1px 40px);
+      background-size: cover;
+      background-attachment: fixed;
+    }
+
+    h1 {
+      color: #f2c94c;
+      font-size: 42px;
+      text-align: center;
+      margin-top: 40px;
+      margin-bottom: 12px;
+      letter-spacing: 1.2px;
+    }
+
+    h2 {
+      color: #f2c94c;
+      font-size: 26px;
+      text-align: center;
+      margin: 0 0 24px 0;
+      font-weight: normal;
+    }
+
+    form {
+      width: 340px;
+      background: linear-gradient(145deg, #181818, #121212);
+      padding: 26px;
+      border-radius: 16px;
+      box-shadow: 0 4px 25px rgba(0, 0, 0, 0.4);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      align-items: center;
+    }
+
+    input, button {
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid #333;
+      outline: none;
+      font-size: 15px;
+      width: 100%;
+      font-family: 'Roboto Slab', serif;
+    }
+
+    input[type="text"],
+    input[type="date"] {
+      background-color: #1f1f1f;
+      color: #f0f0f0;
+    }
+
+    button {
+      background-color: #f2c94c;
+      color: #101010;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background-color: #d4af37;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .evento {
+      background: linear-gradient(135deg, #1a1a1a, #111);
+      padding: 20px;
+      border-radius: 14px;
+      margin-top: 28px;
+      box-shadow: 0 0 12px rgba(255, 255, 255, 0.04);
+      position: relative;
+    }
+
+    .evento h3 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: bold;
+      color: #ffffff;
+      font-family: 'Playfair Display', serif;
+    }
+
+    .evento p {
+      margin-top: 10px;
+      font-size: 32px;
+      color: #f2c94c;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .delete-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background-color: #ff4444;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .delete-btn:hover {
+      background-color: #cc0000;
+    }
+
+    .loading {
+      text-align: center;
+      color: #f2c94c;
+      margin: 20px 0;
+    }
+
+    .error {
+      background-color: #ff4444;
+      color: white;
+      padding: 10px;
+      border-radius: 8px;
+      margin: 10px 0;
+      text-align: center;
+    }
+
+    .success {
+      background-color: #44ff44;
+      color: #101010;
+      padding: 10px;
+      border-radius: 8px;
+      margin: 10px 0;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>Eventos Importantes</h1>
+  <h2>Añadir Nuevo Evento</h2>
+
+  <div id="messages"></div>
+
+  <form id="formularioEvento">
+    <input type="text" id="nombreEvento" placeholder="Nombre del evento" required />
+    <input type="date" id="fechaEvento" required />
+    <button type="submit">Agregar Evento</button>
+  </form>
+
+  <div class="container" id="eventosContainer"></div>
+
+  <script>
+    const API_URL = 'http://localhost:3000/api';
+    const formulario = document.getElementById('formularioEvento');
+    const eventosContainer = document.getElementById('eventosContainer');
+    const messagesDiv = document.getElementById('messages');
+
+    // Función para mostrar mensajes
+    function mostrarMensaje(mensaje, tipo = 'success') {
+      messagesDiv.innerHTML = `<div class="${tipo}">${mensaje}</div>`;
+      setTimeout(() => {
+        messagesDiv.innerHTML = '';
+      }, 3000);
+    }
+
+    // Función para mostrar loading
+    function mostrarLoading(mostrar = true) {
+      if (mostrar) {
+        eventosContainer.innerHTML = '<div class="loading">Cargando eventos...</div>';
+      }
+    }
+
+    function calcularTiempoRestante(fechaEvento) {
+      const ahora = new Date().getTime();
+      const eventoTiempo = new Date(fechaEvento).getTime();
+      const diferencia = eventoTiempo - ahora;
+
+      if (diferencia <= 0) return '¡Ya ocurrió!';
+
+      const dias = Math.floor(diferencia / (1000 * 60 * 60 * 24));
+      const horas = Math.floor((diferencia % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutos = Math.floor((diferencia % (1000 * 60 * 60)) / (1000 * 60));
+      const segundos = Math.floor((diferencia % (1000 * 60)) / 1000);
+
+      return `${dias}d ${horas}h ${minutos}m ${segundos}s`;
+    }
+
+    function actualizarContadores() {
+      document.querySelectorAll('.evento').forEach(card => {
+        const fecha = card.getAttribute('data-fecha');
+        const p = card.querySelector('p');
+        if (p) {
+          p.textContent = calcularTiempoRestante(fecha);
+        }
+      });
+    }
+
+    // Función para crear elemento de evento
+    function crearEventoElemento(evento) {
+      const card = document.createElement('div');
+      card.classList.add('evento');
+      card.setAttribute('data-fecha', evento.fecha);
+      card.setAttribute('data-id', evento.id);
+
+      const titulo = document.createElement('h3');
+      titulo.textContent = evento.nombre;
+
+      const tiempo = document.createElement('p');
+      tiempo.textContent = calcularTiempoRestante(evento.fecha);
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.classList.add('delete-btn');
+      deleteBtn.innerHTML = '×';
+      deleteBtn.onclick = () => eliminarEvento(evento.id);
+
+      card.appendChild(deleteBtn);
+      card.appendChild(titulo);
+      card.appendChild(tiempo);
+
+      return card;
+    }
+
+    // Cargar eventos del servidor
+    async function cargarEventos() {
+      try {
+        mostrarLoading(true);
+        const response = await fetch(`${API_URL}/eventos`);
+        const data = await response.json();
+
+        if (data.success) {
+          eventosContainer.innerHTML = '';
+          data.eventos.forEach(evento => {
+            const eventoElemento = crearEventoElemento(evento);
+            eventosContainer.appendChild(eventoElemento);
+          });
+          
+          if (data.eventos.length === 0) {
+            eventosContainer.innerHTML = '<div class="loading">No hay eventos guardados</div>';
+          }
+        } else {
+          throw new Error(data.error || 'Error al cargar eventos');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        mostrarMensaje('Error al cargar eventos: ' + error.message, 'error');
+      }
+    }
+
+    // Agregar nuevo evento
+    async function agregarEvento(nombre, fecha) {
+      try {
+        const response = await fetch(`${API_URL}/eventos`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ nombre, fecha })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          const eventoElemento = crearEventoElemento(data.evento);
+          eventosContainer.appendChild(eventoElemento);
+          mostrarMensaje('Evento agregado correctamente');
+          formulario.reset();
+        } else {
+          throw new Error(data.error || 'Error al agregar evento');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        mostrarMensaje('Error al agregar evento: ' + error.message, 'error');
+      }
+    }
+
+    // Eliminar evento
+    async function eliminarEvento(id) {
+      if (!confirm('¿Estás seguro de que quieres eliminar este evento?')) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_URL}/eventos/${id}`, {
+          method: 'DELETE'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          const eventoElemento = document.querySelector(`[data-id="${id}"]`);
+          if (eventoElemento) {
+            eventoElemento.remove();
+          }
+          mostrarMensaje('Evento eliminado correctamente');
+        } else {
+          throw new Error(data.error || 'Error al eliminar evento');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        mostrarMensaje('Error al eliminar evento: ' + error.message, 'error');
+      }
+    }
+
+    // Event listeners
+    formulario.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const nombre = document.getElementById('nombreEvento').value;
+      const fecha = document.getElementById('fechaEvento').value;
+      await agregarEvento(nombre, fecha);
+    });
+
+    // Cargar eventos al iniciar
+    window.addEventListener('DOMContentLoaded', cargarEventos);
+
+    // Actualizar contadores cada segundo
+    setInterval(actualizarContadores, 1000);
+  </script>
+</body>
+</html>
