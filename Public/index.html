@@ -59,6 +59,7 @@
       outline: none;
       font-size: 15px;
       width: 100%;
+      box-sizing: border-box;
       font-family: 'Roboto Slab', serif;
     }
 
@@ -84,6 +85,8 @@
       max-width: 960px;
       margin: 0 auto;
       padding: 24px;
+      width: 100%;
+      box-sizing: border-box;
     }
 
     .evento {
@@ -172,7 +175,10 @@
   <div class="container" id="eventosContainer"></div>
 
   <script>
-    const API_URL = 'http://localhost:3000/api';
+    // --- CORRECCIÓN AQUÍ ---
+    // Se usa una ruta relativa para que funcione tanto en local como en Render.
+    const API_URL = '/api'; 
+    
     const formulario = document.getElementById('formularioEvento');
     const eventosContainer = document.getElementById('eventosContainer');
     const messagesDiv = document.getElementById('messages');
@@ -194,7 +200,8 @@
 
     function calcularTiempoRestante(fechaEvento) {
       const ahora = new Date().getTime();
-      const eventoTiempo = new Date(fechaEvento).getTime();
+      // Asegurarse de que la fecha se interprete correctamente en la zona horaria del navegador
+      const eventoTiempo = new Date(fechaEvento + 'T00:00:00').getTime();
       const diferencia = eventoTiempo - ahora;
 
       if (diferencia <= 0) return '¡Ya ocurrió!';
@@ -247,6 +254,9 @@
       try {
         mostrarLoading(true);
         const response = await fetch(`${API_URL}/eventos`);
+        if (!response.ok) {
+            throw new Error(`Error HTTP: ${response.status}`);
+        }
         const data = await response.json();
 
         if (data.success) {
@@ -264,7 +274,8 @@
         }
       } catch (error) {
         console.error('Error:', error);
-        mostrarMensaje('Error al cargar eventos: ' + error.message, 'error');
+        eventosContainer.innerHTML = ''; // Limpiar el mensaje de carga
+        mostrarMensaje('No se pudieron cargar los eventos. ' + error.message, 'error');
       }
     }
 
@@ -278,10 +289,17 @@
           },
           body: JSON.stringify({ nombre, fecha })
         });
-
+        
+        if (!response.ok) {
+            throw new Error(`Error HTTP: ${response.status}`);
+        }
         const data = await response.json();
 
         if (data.success) {
+          // Si el contenedor estaba vacío, limpiarlo antes de agregar
+          if (document.querySelector('.loading')) {
+            eventosContainer.innerHTML = '';
+          }
           const eventoElemento = crearEventoElemento(data.evento);
           eventosContainer.appendChild(eventoElemento);
           mostrarMensaje('Evento agregado correctamente');
@@ -297,7 +315,8 @@
 
     // Eliminar evento
     async function eliminarEvento(id) {
-      if (!confirm('¿Estás seguro de que quieres eliminar este evento?')) {
+      // Usar un modal personalizado en lugar de confirm()
+      if (!window.confirm('¿Estás seguro de que quieres eliminar este evento?')) {
         return;
       }
 
@@ -306,6 +325,9 @@
           method: 'DELETE'
         });
 
+        if (!response.ok) {
+            throw new Error(`Error HTTP: ${response.status}`);
+        }
         const data = await response.json();
 
         if (data.success) {
