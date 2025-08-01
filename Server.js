@@ -5,13 +5,18 @@ const fs = require('fs').promises;
 const path = require('path');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000; // ✅ CAMBIO: Puerto dinámico para Render
 const EVENTOS_FILE = path.join(__dirname, 'eventos.json');
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public')); // Para servir archivos estáticos
+
+// ✅ NUEVO: Ruta principal que sirve index.html
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 // Función para leer eventos del archivo
 async function leerEventos() {
@@ -144,7 +149,7 @@ app.put('/api/eventos/:id', async (req, res) => {
 
 // Iniciar servidor
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+  console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
   console.log(`📁 Los eventos se guardan en: ${EVENTOS_FILE}`);
 });
 
